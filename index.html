@@ -834,6 +834,20 @@ var SOURCE_GROUP = 'topics';
 var DEST_GROUP = 'group_title';
 var LOG_BOARD_ID = '18402837819';
 
+// Vital Supplies auto-deduction config
+var VITAL_SUPPLIES_BOARD_ID = '18402880277';
+var NAOH_GROUP_ID = 'group_mm17rn98';   // Sodium Hydroxide
+var SODA_ASH_GROUP_ID = 'group_mm17ansz'; // Soda Ash
+var BAGS_COLUMN_ID = 'numeric_mm17bhbw';
+var BASIFY_FLOCC_GROUP_ID = 'group_mm16wch5';
+var BATCH_NAME_COLUMN_ID = 'text_mm166879';
+var DEDUCTION_PER_BATCH = -0.5;
+
+// Pre-seed already-processed batches (manually deducted before automation was added)
+if (!localStorage.getItem('basifyFlocc_processed')) {
+  localStorage.setItem('basifyFlocc_processed', JSON.stringify(['11450148850']));
+}
+
 var OPERATORS = {
   'QL01': 'Quinton L',
   'JR01': 'Jaime R',
@@ -1683,7 +1697,67 @@ function showToast(message, type) {
   }, 4000);
 }
 
-// ==================== EVENT LISTENERS ====================
+// ==================== VITAL SUPPLIES AUTO-DEDUCTION ====================
+function getProcessedBatches() {
+  try {
+    var stored = localStorage.getItem('basifyFlocc_processed');
+    return stored ? JSON.parse(stored) : [];
+  } catch(e) { return []; }
+}
+
+function markBatchProcessed(itemId) {
+  var processed = getProcessedBatches();
+  if (processed.indexOf(itemId) === -1) {
+    processed.push(itemId);
+    localStorage.setItem('basifyFlocc_processed', JSON.stringify(processed));
+  }
+}
+
+function createVitalSuppliesDeduction(batchName, groupId) {
+  var colValues = JSON.stringify(JSON.stringify({ [BAGS_COLUMN_ID]: String(DEDUCTION_PER_BATCH) }));
+  var query = 'mutation { create_item(board_id: ' + VITAL_SUPPLIES_BOARD_ID + ', group_id: "' + groupId + '", item_name: "' + batchName.replace(/"/g, '\\"') + '", column_values: ' + colValues + ') { id } }';
+  return mondayQuery(query);
+}
+
+function checkBasifyFloccAndDeduct() {
+  // Fetch items currently in the Basify and Flocc group
+  var query = '{ boards(ids: ' + BOARD_ID + ') { groups(ids: "' + BASIFY_FLOCC_GROUP_ID + '") { items_page(limit: 50) { items { id name column_values(ids: "' + BATCH_NAME_COLUMN_ID + '") { id text } } } } } }';
+
+  mondayQuery(query).then(function(data) {
+    if (!data || !data.data || !data.data.boards || !data.data.boards[0]) return;
+    var groups = data.data.boards[0].groups;
+    if (!groups || !groups[0] || !groups[0].items_page) return;
+    var items = groups[0].items_page.items || [];
+    var processed = getProcessedBatches();
+
+    items.forEach(function(item) {
+      if (processed.indexOf(item.id) !== -1) return; // Already processed
+
+      // Use batch name from column, fall back to item name
+      var batchName = item.name;
+      if (item.column_values && item.column_values[0] && item.column_values[0].text) {
+        batchName = item.column_values[0].text;
+      }
+
+      // Create deductions for NaOH and Soda Ash
+      Promise.all([
+        createVitalSuppliesDeduction(batchName, NAOH_GROUP_ID),
+        createVitalSuppliesDeduction(batchName, SODA_ASH_GROUP_ID)
+      ]).then(function() {
+        markBatchProcessed(item.id);
+        showToast('Auto-deducted 0.5 bags NaOH + Soda Ash for ' + batchName, 'success');
+        console.log('[Vital Supplies] Deducted for batch: ' + batchName + ' (item ' + item.id + ')');
+      }).catch(function(err) {
+        console.error('[Vital Supplies] Deduction failed for ' + batchName + ':', err);
+        showToast('Failed to deduct supplies for ' + batchName, 'error');
+      });
+    });
+  }).catch(function(err) {
+    console.error('[Vital Supplies] Check failed:', err);
+  });
+}
+
+// ==================== EVENT LISTENERS ==
 document.addEventListener('DOMContentLoaded', function() {
   // Theme toggle setup first
   var toggles = document.querySelectorAll('[data-theme-toggle]');
@@ -1706,6 +1780,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('pipelineScreen').classList.add('active');
     document.getElementById('operatorName').textContent = state.operatorName;
     fetchBatches();
+    // Start Vital Supplies auto-deduction check
+    checkBasifyFloccAndDeduct();
+    setInterval(checkBasifyFloccAndDeduct, 60000); // Check every 60 seconds
   }
 
   // Login
@@ -1722,6 +1799,9 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('pipelineScreen').classList.add('active');
       document.getElementById('operatorName').textContent = state.operatorName;
       fetchBatches();
+      // Start Vital Supplies auto-deduction check
+      checkBasifyFloccAndDeduct();
+      setInterval(checkBasifyFloccAndDeduct, 60000); // Check every 60 seconds
     } else {
       loginError.textContent = 'Invalid code. Try QL01, JR01, JL01, or JD01.';
       loginInput.style.borderColor = 'var(--color-error)';
