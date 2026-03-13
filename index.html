@@ -625,7 +625,7 @@ a, button, [role="button"] {
 <body>
 
 <!-- ==================== LOGIN SCREEN ==================== -->
-<div id="loginScreen" class="screen login-screen active">
+<div id="loginScreen" class="screen login-screen active" style="display:none!important">
   <div class="login-card">
     <div class="logo-wrapper">
       <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Batch Pipeline logo">
@@ -649,7 +649,7 @@ a, button, [role="button"] {
 </div>
 
 <!-- ==================== PIPELINE SCREEN ==================== -->
-<div id="pipelineScreen" class="screen pipeline-screen">
+<div id="pipelineScreen" class="screen pipeline-screen active">
   <header class="app-header">
     <h1>Batch Pipeline</h1>
     <div class="header-actions">
@@ -1835,13 +1835,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Logout
   document.getElementById('logoutBtn').addEventListener('click', function() {
-    state.operator = null;
-    state.operatorName = '';
-    state.batches = [];
-    document.getElementById('pipelineScreen').classList.remove('active');
-    document.getElementById('loginScreen').classList.add('active');
-    loginInput.value = '';
-    loginError.textContent = '';
+    window.location.href = 'https://kmjz-master-hub.vercel.app';
   });
 
   // Push modal
@@ -1883,6 +1877,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+</script>
+
+<script>
+// === AUTO-SET OPERATOR FROM LOCALSTORAGE (no code wall) ===
+(function() {
+  var name = null;
+  var code = null;
+  try { name = localStorage.getItem('kmjz_operator_name'); } catch(e) {}
+  try { code = localStorage.getItem('kmjz_operator_code'); } catch(e) {}
+  if (name && typeof state !== 'undefined') {
+    state.operatorName = name;
+    if (code) state.operator = code.toUpperCase();
+  }
+  // Update operator badge
+  var badge = document.getElementById('operatorName');
+  if (badge && name) badge.textContent = name;
+  // Trigger data load
+  if (name && typeof fetchBatches === 'function') {
+    try { fetchBatches(); } catch(e) {}
+  }
+  if (typeof checkBasifyFloccAndDeduct === 'function') {
+    try { checkBasifyFloccAndDeduct(); setInterval(checkBasifyFloccAndDeduct, 60000); } catch(e) {}
+  }
+})();
 </script>
 </body>
 </html>
