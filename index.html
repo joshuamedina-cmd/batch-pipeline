@@ -638,10 +638,33 @@ a, button, [role="button"] {
       </svg>
     </div>
     <h1>Batch Pipeline</h1>
-    <p>Enter your operator code to begin</p>
-    <input type="text" id="loginInput" class="login-input" placeholder="0000" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" autofocus>
-    <div id="loginError" class="login-error"></div>
-    <button id="loginBtn" class="btn btn-primary btn-lg" style="width:100%; margin-top: var(--space-4);">Log In</button>
+    <p>Select your name to begin</p>
+    <select id="operatorSelect" class="login-input" style="text-align:left; letter-spacing:normal; text-transform:none; font-size:1rem; appearance:none; -webkit-appearance:none; cursor:pointer; background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%225 9 12 15 19 9%22/></svg>'); background-repeat:no-repeat; background-position:right 16px center;">
+        <option value="" disabled selected>— Select your name —</option>
+        <option value="Arturo">Arturo</option>
+        <option value="Bobby">Bobby</option>
+        <option value="Cris">Cris</option>
+        <option value="Dylan S">Dylan S</option>
+        <option value="Eli">Eli</option>
+        <option value="FernDawg">FernDawg</option>
+        <option value="Frank">Frank</option>
+        <option value="George">George</option>
+        <option value="George T">George T</option>
+        <option value="JDub">JDub</option>
+        <option value="JJ">JJ</option>
+        <option value="Jaime D">Jaime D</option>
+        <option value="Jaime P">Jaime P</option>
+        <option value="Jeremy">Jeremy</option>
+        <option value="Josh">Josh</option>
+        <option value="KD">KD</option>
+        <option value="Laker">Laker</option>
+        <option value="Moh">Moh</option>
+        <option value="Q">Q</option>
+        <option value="Quentin">Quentin</option>
+        <option value="Sly">Sly</option>
+        <option value="Zee">Zee</option>
+    </select>
+    <button id="loginBtn" class="btn btn-primary btn-lg" style="width:100%; margin-top: var(--space-4);">Continue</button>
   </div>
   <footer style="text-align:center; padding: var(--space-8) 0; color: var(--color-text-faint); font-size: var(--text-xs);">
     <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-faint); text-decoration: underline;">Created with Perplexity Computer</a>
@@ -848,28 +871,6 @@ if (!localStorage.getItem('basifyFlocc_processed')) {
   localStorage.setItem('basifyFlocc_processed', JSON.stringify(['11450148850']));
 }
 
-var OPERATORS = {
-  '4821': 'Josh',
-  '0420': 'Q',
-  '1911': 'Jaime D',
-  '4093': 'George',
-  '5150': 'Bobby',
-  '2008': 'Jaime P',
-  '6239': 'Sly',
-  '4444': 'Zee',
-  '3979': 'Dylan S',
-  '9034': 'JDub',
-  '8818': 'Cris',
-  '5463': 'Arturo',
-  '3847': 'Eli',
-  '0419': 'Laker',
-  '7117': 'FernDawg',
-  '0001': 'KD',
-  '1234': 'Moh',
-  '2691': 'Quentin',
-  '8305': 'George T',
-  '4629': 'Frank'
-};
 
 // ==================== 30 ANIMAL SVG GENERATORS ====================
 var animalGenerators = [
@@ -1789,49 +1790,34 @@ document.addEventListener('DOMContentLoaded', function() {
     root.setAttribute('data-theme', 'dark');
     theme = 'dark';
   }
-  if (autoCode && OPERATORS[autoCode.toUpperCase()]) {
-    state.operator = autoCode.toUpperCase();
-    state.operatorName = OPERATORS[state.operator];
+  if (autoCode) {
+    state.operatorName = autoCode;
     document.getElementById('loginScreen').classList.remove('active');
     document.getElementById('pipelineScreen').classList.add('active');
-    document.getElementById('operatorName').textContent = state.operatorName;
+    document.getElementById('operatorName').textContent = autoCode;
     fetchBatches();
-    // Start Vital Supplies auto-deduction check
     checkBasifyFloccAndDeduct();
-    setInterval(checkBasifyFloccAndDeduct, 60000); // Check every 60 seconds
+    setInterval(checkBasifyFloccAndDeduct, 60000);
   }
 
   // Login
-  var loginInput = document.getElementById('loginInput');
   var loginBtn = document.getElementById('loginBtn');
-  var loginError = document.getElementById('loginError');
 
   function attemptLogin() {
-    var code = loginInput.value.trim().toUpperCase();
-    if (OPERATORS[code]) {
-      state.operator = code;
-      state.operatorName = OPERATORS[code];
-      document.getElementById('loginScreen').classList.remove('active');
-      document.getElementById('pipelineScreen').classList.add('active');
-      document.getElementById('operatorName').textContent = state.operatorName;
-      fetchBatches();
-      // Start Vital Supplies auto-deduction check
-      checkBasifyFloccAndDeduct();
-      setInterval(checkBasifyFloccAndDeduct, 60000); // Check every 60 seconds
-    } else {
-      loginError.textContent = 'Invalid code. Enter your 4-digit operator code.';
-      loginInput.style.borderColor = 'var(--color-error)';
-      setTimeout(function() {
-        loginInput.style.borderColor = '';
-        loginError.textContent = '';
-      }, 3000);
-    }
+    var select = document.getElementById('operatorSelect');
+    var name = select.value;
+    if (!name) return;
+    state.operatorName = name;
+    localStorage.setItem('kmjz_operator_name', name);
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('pipelineScreen').classList.add('active');
+    document.getElementById('operatorName').textContent = name;
+    fetchBatches();
+    checkBasifyFloccAndDeduct();
+    setInterval(checkBasifyFloccAndDeduct, 60000);
   }
 
   loginBtn.addEventListener('click', attemptLogin);
-  loginInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') attemptLogin();
-  });
 
   // Logout
   document.getElementById('logoutBtn').addEventListener('click', function() {
